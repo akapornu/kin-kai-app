@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>กิน×กาย</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2e7d6b">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f2f6f4; --surface: #ffffff; --surface-2: #e9efec;
+    --ink: #1c2321; --ink-2: #56605c; --muted: #8a938f;
+    --accent: #2e7d6b; --accent-ink: #ffffff;
+    --hairline: rgba(28,35,33,0.10); --grid: #e1e6e3;
+    --series-hr: #2a78d6;
+    --seq-1:#fde3d5; --seq-2:#f6b795; --seq-3:#f08c57; --seq-4:#eb6834; --seq-5:#c74e1d; --seq-6:#9c3a11;
+    --status-good: #0ca30c; --status-warn: #fab219; --status-serious: #ec835a; --status-critical: #d03b3b;
+    --chart-surface: #fcfcfb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #101614; --surface: #1a211e; --surface-2: #232b28;
+      --ink: #e8edea; --ink-2: #aeb8b3; --muted: #79837e;
+      --accent: #58b49e; --accent-ink: #0d1512;
+      --hairline: rgba(255,255,255,0.10); --grid: #2a322e;
+      --series-hr: #3987e5;
+      --seq-1:#4a2513; --seq-2:#7c3a17; --seq-3:#a84d1e; --seq-4:#d95926; --seq-5:#ef7f4f; --seq-6:#f6a67e;
+      --chart-surface: #1a1a19;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", sans-serif;
+    font-size: 16px; line-height: 1.55;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: calc(12px + env(safe-area-inset-top)) 14px 130px; }
+  header.app { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  header.app h1 { font-size: 1.35rem; margin: 0; }
+  header.app h1 .x { color: var(--accent); }
+  .fresh { font-size: .78rem; color: var(--muted); text-align: right; }
+  .fresh button, .ghostbtn {
+    border: 1px solid var(--hairline); background: var(--surface); color: var(--ink-2);
+    border-radius: 999px; padding: 3px 12px; font-size: .78rem; cursor: pointer; margin-left: 6px;
+    font-family: inherit;
+  }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .banner { border: 1px solid var(--hairline); border-left: 4px solid var(--status-warn);
+    background: var(--surface); border-radius: 10px; padding: 12px 14px; margin: 10px 0; font-size: .92rem; }
+  .banner.err { border-left-color: var(--status-critical); }
+  .banner b { display: block; margin-bottom: 2px; }
+  section.card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 14px; padding: 14px 14px 12px; margin-top: 12px; }
+  section.card > h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); margin: 0 0 10px; font-weight: 600; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; }
+  .tile .v { font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
+  .tile .v small { font-size: .72rem; font-weight: 400; color: var(--ink-2); }
+  .tile .k { font-size: .72rem; color: var(--ink-2); }
+  .tile.flag .v { color: var(--status-critical); }
+  .meals { margin: 0; padding: 0; }
+  .meals li { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--hairline); list-style: none; }
+  .meals li:last-child { border-bottom: 0; }
+  .meals .t { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: .85rem; min-width: 3.2em; }
+  .meals .what { flex: 1; overflow-wrap: anywhere; }
+  .meals .kcal { font-size: .85rem; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .empty { color: var(--muted); font-size: .92rem; padding: 6px 0; }
+  .nut { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .chip { background: var(--surface-2); border-radius: 999px; padding: 4px 12px; font-size: .82rem; color: var(--ink-2); }
+  .chip b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .footnote { font-size: .74rem; color: var(--muted); margin-top: 8px; }
+  .insight { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--hairline); font-size: .92rem; }
+  .insight:last-child { border-bottom: 0; }
+  .insight .ico { flex: none; width: 1.6em; text-align: center; }
+  .insight .lbl { font-weight: 600; }
+  .insight.warn .lbl { color: var(--status-serious); }
+  .insight.crit .lbl { color: var(--status-critical); }
+  .insight.good .lbl { color: var(--status-good); }
+  .chartbox { background: var(--chart-surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 8px 6px; overflow-x: auto; }
+  .chartbox svg { display: block; }
+  .chart-cap { font-size: .74rem; color: var(--muted); margin-top: 6px; }
+  #tip { position: fixed; pointer-events: none; display: none; z-index: 30;
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.15); padding: 6px 10px; font-size: .8rem; line-height: 1.45; }
+  details.tbl summary { font-size: .82rem; color: var(--ink-2); cursor: pointer; margin-top: 8px; }
+  details.tbl table { border-collapse: collapse; width: 100%; margin-top: 6px; font-size: .8rem; font-variant-numeric: tabular-nums; }
+  details.tbl th, details.tbl td { border-bottom: 1px solid var(--hairline); padding: 3px 6px; text-align: right; }
+  details.tbl th:first-child, details.tbl td:first-child { text-align: left; }
+  .actions { display: flex; gap: 8px; margin-top: 12px; }
+  .actions button { flex: 1; border: 1px solid var(--hairline); background: var(--surface); color: var(--ink);
+    border-radius: 12px; padding: 10px; font-size: .9rem; cursor: pointer; font-family: inherit; }
+  .actions button:disabled { opacity: .55 }
+  nav.dock { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px); border-top: 1px solid var(--hairline);
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); }
+  .dock-inner { max-width: 480px; margin: 0 auto; display: flex; gap: 10px; }
+  .dock button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 56px; border-radius: 14px; border: 0; font-weight: 700; font-size: 1.02rem; cursor: pointer; font-family: inherit; }
+  .dock .coffee { background: var(--accent); color: var(--accent-ink); }
+  .dock .meal { background: var(--surface); color: var(--ink); border: 1.5px solid var(--accent); }
+  .dock button:active { transform: scale(.985); }
+  @media (prefers-reduced-motion: reduce) { .dock button:active { transform: none; } }
+
+  /* modal จดมื้อ */
+  #modal { position: fixed; inset: 0; z-index: 40; display: none; }
+  #modal.open { display: block; }
+  #modal .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
+  #modal .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface);
+    border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    max-width: 480px; margin: 0 auto; max-height: 85vh; overflow-y: auto; }
+  .sheet h3 { margin: 0 0 12px; font-size: 1.05rem; }
+  .typerow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .typerow button { border: 1.5px solid var(--hairline); background: var(--surface-2); color: var(--ink);
+    border-radius: 999px; padding: 8px 14px; font-size: .92rem; cursor: pointer; font-family: inherit; }
+  .typerow button.sel { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: .8rem; color: var(--ink-2); margin-bottom: 4px; }
+  .field input[type="text"], .field input[type="time"], .field input[type="date"] {
+    width: 100%; border: 1px solid var(--hairline); background: var(--surface-2); color: var(--ink);
+    border-radius: 10px; padding: 10px 12px; font-size: 1rem; font-family: inherit; }
+  .qtyrow { display: flex; align-items: center; gap: 14px; }
+  .qtyrow button { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--hairline);
+    background: var(--surface-2); color: var(--ink); font-size: 1.3rem; cursor: pointer; }
+  .qtyrow .q { font-size: 1.3rem; font-weight: 700; min-width: 1.5em; text-align: center; font-variant-numeric: tabular-nums; }
+  .photorow { display: flex; gap: 10px; align-items: center; }
+  .photorow label.btn { border: 1.5px dashed var(--accent); color: var(--accent); border-radius: 12px;
+    padding: 10px 14px; font-size: .92rem; cursor: pointer; }
+  .photorow img { height: 56px; border-radius: 8px; }
+  .photorow input { display: none; }
+  .sheetact { display: flex; gap: 10px; margin-top: 14px; }
+  .sheetact button { flex: 1; min-height: 50px; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .sheetact .save { background: var(--accent); color: var(--accent-ink); border: 0; }
+  .sheetact .cancel { background: var(--surface); color: var(--ink-2); border: 1px solid var(--hairline); }
+  #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom));
+    background: var(--ink); color: var(--bg); border-radius: 999px; padding: 10px 18px; font-size: .9rem;
+    z-index: 50; display: none; max-width: 90vw; text-align: center; }
+
+  /* หน้า setup */
+  #setup { display: none; }
+  #setup.open { display: block; }
+  #setup .field input { width: 100%; border: 1px solid var(--hairline); background: var(--surface-2); color: var(--ink);
+    border-radius: 10px; padding: 10px 12px; font-size: .95rem; font-family: inherit; }
+  #setup ol { padding-left: 1.3em; font-size: .9rem; color: var(--ink-2); }
+  .savebtn { width: 100%; min-height: 52px; border-radius: 12px; background: var(--accent); color: var(--accent-ink);
+    border: 0; font-size: 1.05rem; font-weight: 700; cursor: pointer; margin-top: 8px; font-family: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <h1>กิน<span class="x">×</span>กาย</h1>
+    <div class="fresh"><span id="freshTxt">…</span><button id="refreshBtn" type="button">รีเฟรช</button></div>
+  </header>
+  <div id="banner"></div>
+
+  <div id="setup">
+    <section class="card">
+      <h2>ตั้งค่าครั้งแรก</h2>
+      <ol>
+        <li>สร้าง Fine-grained token ที่ github.com → Settings → Developer settings → Personal access tokens → Fine-grained → เลือกเฉพาะ repo ข้อมูล → สิทธิ์ Contents + Actions (Read and write)</li>
+        <li>วางด้านล่างแล้วกดเริ่ม — เก็บไว้ในเครื่องนี้เท่านั้น</li>
+      </ol>
+      <div class="field"><label>GitHub repo (owner/name)</label><input id="cfgRepo" type="text" value="akapornu/garmin-cloud-sync" autocapitalize="off" autocorrect="off"></div>
+      <div class="field"><label>GitHub token</label><input id="cfgToken" type="password" placeholder="github_pat_… หรือ gho_…"></div>
+      <button class="savebtn" id="cfgSave" type="button">เริ่มใช้งาน</button>
+    </section>
+  </div>
+
+  <div id="main" style="display:none">
+    <section class="card" id="aiCard" hidden>
+      <h2>Claude วิเคราะห์ <span id="aiWhen" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+      <div id="aiBody" style="white-space:pre-wrap;font-size:.94rem"></div>
+      <div class="actions">
+        <button id="analyzeBtn" type="button">🧠 วิเคราะห์ใหม่เดี๋ยวนี้</button>
+        <button id="syncBtn" type="button">⌚ ดึง Garmin สด</button>
+      </div>
+      <div class="footnote" id="jobNote">อัตโนมัติทุกวันหลัง sync 10:00 น.</div>
+    </section>
+
+    <section class="card">
+      <h2 id="todayHead">วันนี้</h2>
+      <div class="tiles" id="tiles"><div class="empty">กำลังโหลด…</div></div>
+    </section>
+
+    <section class="card">
+      <h2>การกินวันนี้</h2>
+      <ul class="meals" id="mealList"><li class="empty">ยังไม่มีบันทึก</li></ul>
+      <div class="nut" id="nutChips"></div>
+      <div class="footnote" id="nutNote"></div>
+    </section>
+
+    <section class="card">
+      <h2>หัวใจ · ความเครียด · การกิน (รายชั่วโมง)</h2>
+      <div class="chartbox" id="chartbox"><div class="empty">…</div></div>
+      <div class="chart-cap">เส้นน้ำเงิน = HR เฉลี่ย (bpm) · แถบส้ม = ความเครียด (เข้ม = สูง) · ไอคอนบน = เวลากิน · แตะกราฟดูตัวเลข</div>
+      <details class="tbl"><summary>ดูเป็นตาราง</summary><div id="tblWrap"></div></details>
+    </section>
+
+    <section class="card">
+      <h2>ข้อสังเกตอัตโนมัติ</h2>
+      <div id="insights"><div class="empty">…</div></div>
+    </section>
+  </div>
+</div>
+
+<div id="tip"></div>
+<div id="toast"></div>
+
+<nav class="dock" id="dock" style="display:none"><div class="dock-inner">
+  <button class="coffee" id="quickCoffee" type="button">☕ จดกาแฟ</button>
+  <button class="meal" id="openLog" type="button">🍽️ จดมื้อ/อื่น ๆ</button>
+</div></nav>
+
+<div id="modal">
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet">
+    <h3>จดการกิน</h3>
+    <div class="typerow" id="typeRow">
+      <button data-t="มื้ออาหาร" class="sel" type="button">🍽️ มื้ออาหาร</button>
+      <button data-t="กาแฟ" type="button">☕ กาแฟ</button>
+      <button data-t="ของว่าง" type="button">🍪 ของว่าง</button>
+      <button data-t="เครื่องดื่มอื่น" type="button">🥤 เครื่องดื่ม</button>
+    </div>
+    <div class="field"><label>รายละเอียด (เมนู)</label><input id="mDetail" type="text" placeholder="เช่น กะเพราปลาหมึก ไข่ดาว"></div>
+    <div class="field"><label>จำนวน (แก้ว/ช็อต/ที่)</label>
+      <div class="qtyrow"><button id="qMinus" type="button">−</button><span class="q" id="qVal">1</span><button id="qPlus" type="button">+</button></div>
+    </div>
+    <div class="field"><label>เวลาที่กิน (แก้ได้ถ้าจดย้อนหลัง)</label>
+      <div style="display:flex;gap:8px"><input id="mDate" type="date" style="flex:1"><input id="mTime" type="time" style="flex:1"></div>
+    </div>
+    <div class="field"><label>รูปอาหาร</label>
+      <div class="photorow">
+        <label class="btn" for="mPhoto">📷 ถ่าย/เลือกรูป</label>
+        <input id="mPhoto" type="file" accept="image/*">
+        <img id="mPreview" alt="" hidden>
+        <button id="mPhotoClear" class="ghostbtn" type="button" hidden>ลบรูป</button>
+      </div>
+    </div>
+    <div class="sheetact">
+      <button class="cancel" id="mCancel" type="button">ยกเลิก</button>
+      <button class="save" id="mSave" type="button">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, "0");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const numf = x => (x == null || x === "" || isNaN(+x)) ? null : +x;
+
+/* ---------- ฐานข้อมูลโภชนาการ (ประมาณการ) ---------- */
+const FOOD_DB = [
+  { k:["อเมริกาโน","americano","กาแฟดำ","ดำเย็น"], kcal:15, p:0, c:2, f:0, caf:95 },
+  { k:["เอสเพรสโซ","espresso","ช็อต"], kcal:5, p:0, c:1, f:0, caf:65 },
+  { k:["ลาเต้","latte"], kcal:150, p:7, c:13, f:8, caf:75 },
+  { k:["คาปู","cappuccino"], kcal:110, p:6, c:9, f:6, caf:75 },
+  { k:["มอคค่า","mocha"], kcal:230, p:7, c:30, f:9, caf:90 },
+  { k:["กาแฟเย็น","โอเลี้ยง","เย็นโบราณ","กาแฟโบราณ","กาแฟนม"], kcal:220, p:4, c:32, f:8, caf:90 },
+  { k:["กาแฟ","coffee"], kcal:120, p:3, c:14, f:5, caf:90 },
+  { k:["ชาเย็น","ชานม"], kcal:210, p:4, c:32, f:7, caf:35 },
+  { k:["ชาเขียว","มัทฉะ","matcha"], kcal:160, p:3, c:28, f:4, caf:35 },
+  { k:["ชา","tea"], kcal:80, p:1, c:18, f:0, caf:30 },
+  { k:["โกโก้","ช็อกโกแลตเย็น"], kcal:220, p:6, c:32, f:8, caf:10 },
+  { k:["ชูกำลัง","กระทิงแดง","m150","คาราบาว"], kcal:110, p:0, c:27, f:0, caf:50 },
+  { k:["โค้ก","เป๊ปซี่","น้ำอัดลม","สไปรท์","แฟนต้า"], kcal:140, p:0, c:36, f:0, caf:30 },
+  { k:["นมเปรี้ยว","ยาคูลท์"], kcal:100, p:2, c:20, f:1, caf:0 },
+  { k:["นม","milk"], kcal:130, p:7, c:10, f:7, caf:0 },
+  { k:["เบียร์","beer"], kcal:150, p:1, c:12, f:0, caf:0 },
+  { k:["น้ำเปล่า","น้ำแร่"], kcal:0, p:0, c:0, f:0, caf:0 },
+  { k:["กะเพรา"], kcal:600, p:25, c:65, f:25, caf:0 },
+  { k:["ไข่ดาว"], kcal:90, p:6, c:0, f:7, caf:0 },
+  { k:["ไข่เจียว"], kcal:250, p:12, c:2, f:21, caf:0 },
+  { k:["ไข่ต้ม"], kcal:75, p:6, c:0, f:5, caf:0 },
+  { k:["หอยทอด","ออส่วน"], kcal:520, p:18, c:45, f:30, caf:0 },
+  { k:["ข้าวต้มกุ๊ย","ข้าวต้มเปล่า"], kcal:150, p:3, c:33, f:0, caf:0 },
+  { k:["ข้าวต้ม"], kcal:320, p:18, c:45, f:8, caf:0 },
+  { k:["โจ๊ก"], kcal:260, p:12, c:40, f:6, caf:0 },
+  { k:["ข้าวผัด"], kcal:600, p:18, c:75, f:24, caf:0 },
+  { k:["ผัดซีอิ๊ว"], kcal:660, p:20, c:80, f:28, caf:0 },
+  { k:["ผัดไทย"], kcal:580, p:20, c:70, f:24, caf:0 },
+  { k:["ราดหน้า"], kcal:520, p:20, c:65, f:20, caf:0 },
+  { k:["ก๋วยเตี๋ยวแห้ง","บะหมี่แห้ง"], kcal:450, p:20, c:55, f:16, caf:0 },
+  { k:["ก๋วยเตี๋ยว","บะหมี่","เกาเหลา"], kcal:350, p:20, c:40, f:10, caf:0 },
+  { k:["มาม่า"], kcal:320, p:7, c:42, f:14, caf:0 },
+  { k:["ส้มตำ"], kcal:120, p:4, c:20, f:2, caf:0 },
+  { k:["ไก่ย่าง"], kcal:280, p:30, c:2, f:17, caf:0 },
+  { k:["ไก่ทอด"], kcal:290, p:22, c:10, f:18, caf:0 },
+  { k:["หมูปิ้ง"], kcal:100, p:6, c:3, f:7, caf:0 },
+  { k:["หมูกรอบ"], kcal:400, p:18, c:2, f:36, caf:0 },
+  { k:["ข้าวเหนียว"], kcal:220, p:4, c:48, f:0, caf:0 },
+  { k:["ข้าวสวย","ข้าวเปล่า"], kcal:200, p:4, c:44, f:0, caf:0 },
+  { k:["สลัด"], kcal:180, p:6, c:12, f:12, caf:0 },
+  { k:["กล้วย"], kcal:100, p:1, c:26, f:0, caf:0 },
+  { k:["ผลไม้","แตงโม","ส้ม","แอปเปิ้ล","ฝรั่ง","มะม่วง","สับปะรด"], kcal:80, p:1, c:20, f:0, caf:0 },
+  { k:["ขนมปัง","แซนวิช","โทสต์"], kcal:280, p:9, c:40, f:9, caf:0 },
+  { k:["เค้ก","ครัวซอง","โดนัท","คุกกี้","ขนมหวาน","บัวลอย","ลอดช่อง"], kcal:320, p:4, c:45, f:14, caf:0 },
+];
+function matchFood(text) {
+  const hits = [];
+  let rest = (text || "").toLowerCase();
+  for (const f of FOOD_DB) {
+    for (const kw of f.k) {
+      if (rest.includes(kw.toLowerCase())) { hits.push(f); rest = rest.split(kw.toLowerCase()).join(" "); break; }
+    }
+  }
+  return hits;
+}
+
+/* ---------- config + GitHub API ---------- */
+const CFG_KEY = "kk_cfg";
+let cfg = null;
+try { cfg = JSON.parse(localStorage.getItem(CFG_KEY) || "null"); } catch {}
+const api = (path, opts = {}) => fetch(`https://api.github.com/repos/${cfg.repo}${path}`, {
+  ...opts,
+  headers: {
+    "Authorization": `Bearer ${cfg.token}`,
+    "Accept": opts.raw ? "application/vnd.github.raw+json" : "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    ...(opts.body ? { "Content-Type": "application/json" } : {}),
+  },
+});
+
+function toast(msg, ms = 2600) {
+  const t = $("toast"); t.textContent = msg; t.style.display = "block";
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", ms);
+}
+function setBanner(html, isErr) { $("banner").innerHTML = html ? `<div class="banner ${isErr ? "err" : ""}">${html}</div>` : ""; }
+
+/* ---------- โหลด + เรนเดอร์ ---------- */
+let DATA = null;
+try { DATA = JSON.parse(localStorage.getItem("kk_data") || "null"); } catch {}
+let pendingMeals = []; // optimistic: เพิ่งจด ยังไม่เข้า data.json
+
+async function loadData(silent) {
+  if (!silent) $("freshTxt").textContent = "กำลังโหลด…";
+  try {
+    const r = await api(`/contents/data.json?_=${Date.now()}`, { raw: true, cache: "no-store" });
+    if (r.status === 401) { setBanner("<b>Token ใช้ไม่ได้หรือหมดอายุ</b>กดตั้งค่าใหม่ด้านล่าง แล้ววาง token ใหม่", true); return; }
+    if (r.status === 404) { setBanner("<b>ยังไม่มี data.json ใน repo</b>กด \"⌚ ดึง Garmin สด\" หนึ่งครั้งเพื่อสร้าง", false); return; }
+    if (!r.ok) { setBanner(`<b>โหลดข้อมูลไม่สำเร็จ (${r.status})</b>ลองรีเฟรชอีกครั้ง`, true); return; }
+    DATA = await r.json();
+    localStorage.setItem("kk_data", JSON.stringify(DATA));
+    // ตัด pending ที่เข้า data.json แล้ว
+    pendingMeals = pendingMeals.filter(p => !DATA.meals.some(m => m.eaten_at === p.eaten_at && m.detail === p.detail));
+    setBanner("");
+  } catch (e) {
+    if (!DATA) { setBanner("<b>ออฟไลน์</b>ต่อเน็ตแล้วรีเฟรชอีกครั้ง", true); return; }
+  }
+  render();
+}
+
+const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+
+function render() {
+  if (!DATA) return;
+  const d = new Date();
+  $("todayHead").textContent = `วันนี้ · ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear() + 543}`;
+  const today = todayStr();
+  const day = DATA.daily.find(r => r.date === today) || DATA.daily[DATA.daily.length - 1] || {};
+  const isToday = day.date === today;
+  const hToday = DATA.hourly.filter(r => r.date === today);
+  const meals = [...DATA.meals, ...pendingMeals]
+    .filter(m => String(m.eaten_at).startsWith(today))
+    .sort((a, b) => String(a.eaten_at).localeCompare(String(b.eaten_at)));
+
+  renderAI();
+  renderTiles(day, isToday, hToday);
+  renderMeals(meals);
+  renderChart(hToday, meals);
+  renderTable(hToday);
+  renderInsights(day, isToday, hToday, meals);
+  $("freshTxt").textContent = `ข้อมูลรอบ ${DATA.generated_at}`;
+}
+
+function renderAI() {
+  const card = $("aiCard");
+  const latest = (DATA.ai || [])[0];
+  card.hidden = false;
+  if (!latest || !latest.text) { $("aiBody").innerHTML = '<span class="empty">ยังไม่มีบทวิเคราะห์ — กด "วิเคราะห์ใหม่เดี๋ยวนี้"</span>'; return; }
+  $("aiWhen").textContent = `· ${latest.at}`;
+  $("aiBody").innerHTML = esc(latest.text)
+    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+    .replace(/^#+\s*(.+)$/gm, "<b>$1</b>")
+    .replace(/\n{2,}/g, "\n\n");
+}
+
+function renderTiles(day, isToday, hToday) {
+  const el = $("tiles");
+  if (!day.date) { el.innerHTML = '<div class="empty">ยังไม่มีข้อมูลรายวัน</div>'; return; }
+  const sleep = numf(day.sleep_hours), score = numf(day.sleep_score);
+  const rhr = numf(day.resting_hr), hrv = day.hrv_status || "";
+  const lastBB = [...hToday].reverse().map(r => numf(r.body_battery_last)).find(v => v != null);
+  const warnSleep = sleep != null && sleep < 6, warnHrv = hrv && hrv !== "BALANCED";
+  el.innerHTML = `
+    <div class="tile ${warnSleep ? "flag" : ""}"><div class="v">${sleep ?? "–"}<small> ชม.</small></div><div class="k">นอน${score != null ? ` · ${score}` : ""}</div></div>
+    <div class="tile"><div class="v">${rhr ?? "–"}<small> bpm</small></div><div class="k">HR ขณะพัก</div></div>
+    <div class="tile ${warnHrv ? "flag" : ""}"><div class="v" style="font-size:.95rem">${esc(hrv || "–")}</div><div class="k">สถานะ HRV</div></div>
+    <div class="tile"><div class="v">${lastBB ?? "–"}</div><div class="k">Body Battery</div></div>
+    <div class="tile"><div class="v">${numf(day.stress_avg) ?? "–"}</div><div class="k">เครียดเฉลี่ย</div></div>
+    <div class="tile"><div class="v">${numf(day.steps) != null ? numf(day.steps).toLocaleString() : "–"}</div><div class="k">ก้าว</div></div>`
+    + (isToday ? "" : `<div class="empty" style="grid-column:1/-1">* รายวันล่าสุด ${esc(day.date)} — กด "⌚ ดึง Garmin สด" เพื่ออัปเดต</div>`);
+}
+
+const qtyNum = m => { const v = parseFloat(m.qty); return isFinite(v) && v > 0 ? v : 1; };
+
+async function photoBlobUrl(path) {
+  const r = await api(`/contents/${path}`, { raw: true });
+  if (!r.ok) throw new Error(r.status);
+  return URL.createObjectURL(await r.blob());
+}
+
+function renderMeals(meals) {
+  const list = $("mealList"), chips = $("nutChips"), note = $("nutNote");
+  if (!meals.length) {
+    list.innerHTML = '<li class="empty">วันนี้ยังไม่มีบันทึก — กดปุ่มล่างเพื่อจด</li>';
+    chips.innerHTML = ""; note.textContent = ""; return;
+  }
+  let tot = { kcal: 0, p: 0, c: 0, f: 0, caf: 0 }, cafNow = 0, unknown = [];
+  list.innerHTML = meals.map((m, i) => {
+    const qty = qtyNum(m);
+    let hits = matchFood(m.detail);
+    if (!hits.length && /กาแฟ/.test(m.type)) hits = matchFood("กาแฟ");
+    let kcal = 0, caf = 0;
+    hits.forEach(h => { kcal += h.kcal * qty; caf += h.caf * qty; tot.kcal += h.kcal * qty; tot.p += h.p * qty; tot.c += h.c * qty; tot.f += h.f * qty; tot.caf += h.caf * qty; });
+    if (!hits.length && m.detail) unknown.push(m.detail);
+    const t = new Date(String(m.eaten_at).replace(" ", "T"));
+    const hrs = (Date.now() - t) / 3600000;
+    if (hrs >= 0) cafNow += caf * Math.pow(0.5, hrs / 5);
+    const ico = /กาแฟ/.test(m.type) ? "☕" : m.type === "ของว่าง" ? "🍪" : /เครื่องดื่ม/.test(m.type) ? "🥤" : "🍽️";
+    let photoTag = "";
+    if (m.photo && m.photo.startsWith("inbox/")) photoTag = ` <a href="#" data-photo="${esc(m.photo)}" title="ดูรูป">📷</a>`;
+    else if (m.photo && m.photo.includes("drive.google.com")) photoTag = ` <a href="${esc(m.photo.split(/[,\s]+/)[0])}" target="_blank" rel="noopener">📷</a>`;
+    const pend = m._pending ? ' <span style="color:var(--muted)">(กำลังส่ง…)</span>' : "";
+    return `<li><span class="t">${esc(String(m.eaten_at).slice(11, 16))}</span><span class="what">${ico} ${esc(m.detail || m.type)}${qty !== 1 ? ` <b>×${qty}</b>` : ""}${photoTag}${pend}</span><span class="kcal">${hits.length ? "≈" + Math.round(kcal) + " kcal" : "?"}</span></li>`;
+  }).join("");
+  list.querySelectorAll("a[data-photo]").forEach(a => a.addEventListener("click", async e => {
+    e.preventDefault();
+    try { window.open(await photoBlobUrl(a.dataset.photo), "_blank"); } catch { toast("โหลดรูปไม่ได้"); }
+  }));
+  chips.innerHTML = `
+    <span class="chip">รวม <b>≈${Math.round(tot.kcal)}</b> kcal</span>
+    <span class="chip">โปรตีน <b>≈${Math.round(tot.p)}</b> ก.</span>
+    <span class="chip">คาร์บ <b>≈${Math.round(tot.c)}</b> ก.</span>
+    <span class="chip">ไขมัน <b>≈${Math.round(tot.f)}</b> ก.</span>
+    <span class="chip">☕ รับ <b>≈${Math.round(tot.caf)}</b> mg</span>
+    ${tot.caf ? `<span class="chip">คงเหลือ <b>≈${Math.round(cafNow)}</b> mg</span>` : ""}`;
+  note.textContent = "ประมาณจากชื่อเมนู (คาเฟอีนสลายครึ่งทุก ~5 ชม.) — ตัวเลขแม่นขึ้นเมื่อ Claude อ่านรูปในรอบวิเคราะห์"
+    + (unknown.length ? ` · ยังไม่รู้จัก: ${unknown.join(", ")}` : "");
+}
+
+function renderChart(hToday, meals) {
+  const box = $("chartbox");
+  if (!hToday.length) { box.innerHTML = '<div class="empty">ยังไม่มีข้อมูลรายชั่วโมงของวันนี้</div>'; return; }
+  const W = 440, H = 210, L = 34, R = 8, T = 26, plotH = 120, stripY = T + plotH + 14, stripH = 14;
+  const byHour = {}; hToday.forEach(r => { byHour[+r.hour] = r; });
+  const hrs = Object.keys(byHour).map(Number).sort((a, b) => a - b);
+  const hrVals = hrs.map(h => numf(byHour[h].hr_avg)).filter(v => v != null);
+  if (!hrVals.length) { box.innerHTML = '<div class="empty">ยังไม่มีค่า HR วันนี้</div>'; return; }
+  const yMin = Math.max(30, Math.min(...hrVals, 50) - 10), yMax = Math.max(...hrVals, 100) + 10;
+  const x = h => L + (h + .5) * (W - L - R) / 24;
+  const y = v => T + plotH - (v - yMin) * plotH / (yMax - yMin);
+  const seq = v => v == null ? null : v < 25 ? "--seq-1" : v < 40 ? "--seq-2" : v < 55 ? "--seq-3" : v < 70 ? "--seq-4" : v < 85 ? "--seq-5" : "--seq-6";
+  let path = "", started = false;
+  for (const h of hrs) {
+    const v = numf(byHour[h].hr_avg);
+    if (v == null) { started = false; continue; }
+    path += (started ? "L" : "M") + x(h).toFixed(1) + " " + y(v).toFixed(1) + " ";
+    started = true;
+  }
+  const gridVals = [...new Set([Math.round(yMin / 10) * 10 + 10, Math.round((yMin + yMax) / 20) * 10, Math.round(yMax / 10) * 10 - 10])].filter(v => v > yMin && v < yMax);
+  const lastH = hrs[hrs.length - 1], lastV = numf(byHour[lastH]?.hr_avg);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="กราฟ HR รายชั่วโมงวันนี้">`;
+  for (const g of gridVals)
+    svg += `<line x1="${L}" x2="${W - R}" y1="${y(g)}" y2="${y(g)}" stroke="var(--grid)" stroke-width="1"/><text x="${L - 5}" y="${y(g) + 3}" text-anchor="end" font-size="9" fill="var(--muted)">${g}</text>`;
+  svg += `<path d="${path}" fill="none" stroke="var(--series-hr)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  if (lastV != null)
+    svg += `<circle cx="${x(lastH)}" cy="${y(lastV)}" r="3.5" fill="var(--series-hr)" stroke="var(--chart-surface)" stroke-width="2"/><text x="${x(lastH)}" y="${y(lastV) - 8}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--ink)">${lastV}</text>`;
+  for (let h = 0; h < 24; h++) {
+    const v = numf(byHour[h]?.stress_avg), c = seq(v);
+    svg += `<rect x="${(L + h * (W - L - R) / 24 + 1).toFixed(1)}" y="${stripY}" width="${((W - L - R) / 24 - 2).toFixed(1)}" height="${stripH}" rx="3" fill="${c ? `var(${c})` : "none"}" stroke="${c ? "none" : "var(--grid)"}"/>`;
+  }
+  for (const h of [0, 6, 12, 18, 23])
+    svg += `<text x="${x(h)}" y="${stripY + stripH + 12}" text-anchor="middle" font-size="9" fill="var(--muted)">${pad(h)}</text>`;
+  for (const m of meals) {
+    const t = new Date(String(m.eaten_at).replace(" ", "T"));
+    const ico = /กาแฟ/.test(m.type) ? "☕" : "🍽";
+    svg += `<text x="${(L + (t.getHours() + t.getMinutes() / 60) * (W - L - R) / 24).toFixed(1)}" y="${T - 10}" text-anchor="middle" font-size="12">${ico}</text>`;
+  }
+  svg += `</svg>`;
+  box.innerHTML = svg;
+  const tip = $("tip"), svgEl = box.querySelector("svg");
+  function showTip(ev) {
+    const pt = svgEl.getBoundingClientRect();
+    const px = (ev.touches ? ev.touches[0].clientX : ev.clientX);
+    const frac = (px - pt.left) / pt.width * W;
+    const h = Math.min(23, Math.max(0, Math.floor((frac - L) / ((W - L - R) / 24))));
+    const r = byHour[h];
+    if (!r) { tip.style.display = "none"; return; }
+    tip.innerHTML = `<b>${pad(h)}:00</b><br>HR ${numf(r.hr_avg) ?? "–"} (${numf(r.hr_min) ?? "–"}–${numf(r.hr_max) ?? "–"})<br>เครียด ${numf(r.stress_avg) ?? "–"} · ก้าว ${numf(r.steps) ?? "–"}`;
+    tip.style.display = "block";
+    const py = (ev.touches ? ev.touches[0].clientY : ev.clientY);
+    tip.style.left = Math.min(window.innerWidth - 150, px + 12) + "px";
+    tip.style.top = Math.max(8, py - 60) + "px";
+  }
+  svgEl.addEventListener("mousemove", showTip);
+  svgEl.addEventListener("touchstart", showTip, { passive: true });
+  svgEl.addEventListener("touchmove", showTip, { passive: true });
+  svgEl.addEventListener("mouseleave", () => tip.style.display = "none");
+  svgEl.addEventListener("touchend", () => setTimeout(() => tip.style.display = "none", 1200));
+}
+
+function renderTable(hToday) {
+  if (!hToday.length) { $("tblWrap").innerHTML = ""; return; }
+  $("tblWrap").innerHTML = "<table><tr><th>ชม.</th><th>HR</th><th>ต่ำ–สูง</th><th>ก้าว</th><th>เครียด</th><th>หายใจ</th></tr>"
+    + [...hToday].sort((a, b) => +a.hour - +b.hour).map(r =>
+      `<tr><td>${pad(+r.hour)}:00</td><td>${r.hr_avg || "–"}</td><td>${r.hr_min || "–"}–${r.hr_max || "–"}</td><td>${r.steps || "0"}</td><td>${r.stress_avg || "–"}</td><td>${r.respiration_avg || "–"}</td></tr>`).join("")
+    + "</table>";
+}
+
+function renderInsights(day, isToday, hToday, meals) {
+  const out = [];
+  const sleep = numf(day.sleep_hours), hrv = day.hrv_status || "";
+  const shortSleep = sleep != null && sleep < 6, hrvOff = hrv && hrv !== "BALANCED";
+  if (isToday && (shortSleep || hrvOff))
+    out.push({ cls: shortSleep && hrvOff ? "crit" : "warn", ico: "⚠️", lbl: "วันนี้ร่างกายไวต่อกาแฟกว่าปกติ",
+      txt: `${shortSleep ? `นอน ${sleep} ชม.` : ""}${shortSleep && hrvOff ? " + " : ""}${hrvOff ? `HRV ${esc(hrv)}` : ""} — เหมือน 13 ส.ค. แนะนำกาแฟครึ่งเดียว เว้นห่างมื้อหนัก` });
+  for (const m of meals.filter(m => /กาแฟ/.test(m.type))) {
+    const t = new Date(String(m.eaten_at).replace(" ", "T"));
+    const h0 = t.getHours();
+    const before = numf(hToday.find(r => +r.hour === (h0 + 23) % 24)?.hr_avg);
+    const after = Math.max(...[h0, (h0 + 1) % 24].map(h => numf(hToday.find(r => +r.hour === h)?.hr_avg) ?? -1));
+    const stepsAfter = Math.max(...[h0, (h0 + 1) % 24].map(h => numf(hToday.find(r => +r.hour === h)?.steps) ?? 0));
+    if (before != null && after > 0 && after - before >= 15 && stepsAfter < 350)
+      out.push({ cls: "warn", ico: "☕", lbl: `หลังกาแฟ ${pad(h0)}:${pad(t.getMinutes())} หัวใจเต้นแรงขึ้นชัด`,
+        txt: `HR ${before} → ${after} bpm ใน ~1 ชม. โดยแทบไม่ได้เดิน — แพทเทิร์น baseline 13 ส.ค.` });
+  }
+  let run = [], best = [];
+  for (const r of [...hToday].sort((a, b) => +a.hour - +b.hour)) {
+    if ((numf(r.stress_avg) ?? 0) >= 70) { run.push(+r.hour); if (run.length > best.length) best = [...run]; }
+    else run = [];
+  }
+  if (best.length >= 3)
+    out.push({ cls: "warn", ico: "🔥", lbl: `เครียดสูงต่อเนื่อง ${best.length} ชม. (${pad(best[0])}:00–${pad(best[best.length - 1] + 1)}:00)`,
+      txt: "หาจังหวะพักสั้น ๆ หรือเช็คตัวกระตุ้นก่อนหน้า (กาแฟ/เหตุการณ์)" });
+  if (isToday && meals.length && new Date(String(meals[0].eaten_at).replace(" ", "T")).getHours() >= 15)
+    out.push({ cls: "warn", ico: "🍚", lbl: `มื้อแรกวันนี้ ${String(meals[0].eaten_at).slice(11, 16)}`,
+      txt: "ท้องว่างนาน+มื้อหนัก มักตามด้วยง่วง+อยากกาแฟ — ลองรองท้องบ่ายต้น" });
+  if (isToday && !meals.length)
+    out.push({ cls: "", ico: "📝", lbl: "ยังไม่มีบันทึกการกินวันนี้", txt: "จดทุกแก้ว/มื้อ แล้วระบบจับคู่กับหัวใจ-ความเครียดให้เอง" });
+  if (!out.length)
+    out.push({ cls: "good", ico: "✅", lbl: "ไม่มีสัญญาณผิดปกติ", txt: "นอนพอ HRV ปกติ ไม่มี HR พุ่งขณะนิ่ง" });
+  $("insights").innerHTML = out.map(i =>
+    `<div class="insight ${i.cls}"><span class="ico">${i.ico}</span><div><span class="lbl">${i.lbl}</span><br><span style="color:var(--ink-2)">${i.txt}</span></div></div>`).join("");
+}
+
+/* ---------- จดการกิน (เขียนเข้า repo) ---------- */
+const b64 = blob => new Promise((res, rej) => {
+  const fr = new FileReader();
+  fr.onload = () => res(String(fr.result).split(",")[1]);
+  fr.onerror = rej;
+  fr.readAsDataURL(blob);
+});
+async function resizeImage(file, maxDim = 1280) {
+  const img = await createImageBitmap(file);
+  const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(img.width * scale);
+  canvas.height = Math.round(img.height * scale);
+  canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+  return new Promise(res => canvas.toBlob(res, "image/jpeg", 0.82));
+}
+async function putFile(path, contentB64, message) {
+  const r = await api(`/contents/${path}`, {
+    method: "PUT",
+    body: JSON.stringify({ message, content: contentB64, branch: "main" }),
+  });
+  if (!r.ok) throw new Error(`PUT ${path}: ${r.status} ${(await r.text()).slice(0, 120)}`);
+}
+async function saveMeal({ type, detail, qty, when, photoFile }) {
+  const id = when.toISOString().replace(/[:.]/g, "-").slice(0, 19) + "-" + Math.random().toString(36).slice(2, 6);
+  const eaten_at = `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())} ${pad(when.getHours())}:${pad(when.getMinutes())}`;
+  let photoPath = "";
+  if (photoFile) {
+    const small = await resizeImage(photoFile);
+    photoPath = `inbox/photos/${id}.jpg`;
+    await putFile(photoPath, await b64(small), `photo ${id}`);
+  }
+  const rec = { id, eaten_at, type, detail, qty, photo: photoPath };
+  await putFile(`inbox/${id}.json`, btoa(unescape(encodeURIComponent(JSON.stringify(rec)))), `meal ${id}`);
+  return rec;
+}
+
+/* ---------- workflow controls ---------- */
+async function dispatch(wf) {
+  const r = await api(`/actions/workflows/${wf}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main" }) });
+  if (r.status !== 204) throw new Error(`dispatch ${wf}: ${r.status}`);
+}
+let polling = false;
+async function pollThenReload(wf, label) {
+  if (polling) return;
+  polling = true;
+  const note = $("jobNote");
+  try {
+    for (let i = 0; i < 30; i++) {
+      await new Promise(res => setTimeout(res, 12000));
+      const r = await api(`/actions/workflows/${wf}/runs?per_page=1`);
+      if (!r.ok) break;
+      const run = (await r.json()).workflow_runs?.[0];
+      if (!run) break;
+      if (run.status === "completed") {
+        note.textContent = run.conclusion === "success" ? `${label}เสร็จแล้ว — กำลังโหลดผล…` : `${label}ล้มเหลว (${run.conclusion})`;
+        if (run.conclusion === "success") { await new Promise(res => setTimeout(res, 4000)); await loadData(true); toast(`${label}เสร็จแล้ว ✓`); }
+        break;
+      }
+      note.textContent = `${label}กำลังทำงาน… (${Math.round((i + 1) * 12 / 60)} นาที)`;
+    }
+  } finally {
+    polling = false;
+    setTimeout(() => { $("jobNote").textContent = "อัตโนมัติทุกวันหลัง sync 10:00 น."; }, 8000);
+  }
+}
+
+/* ---------- UI wiring ---------- */
+function openModal(presetType) {
+  $("modal").classList.add("open");
+  document.querySelectorAll("#typeRow button").forEach(b => b.classList.toggle("sel", b.dataset.t === presetType));
+  const now = new Date();
+  $("mDate").value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  $("mTime").value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  $("mDetail").value = ""; $("qVal").textContent = "1";
+  $("mPhoto").value = ""; $("mPreview").hidden = true; $("mPhotoClear").hidden = true;
+}
+const closeModal = () => $("modal").classList.remove("open");
+
+function wire() {
+  $("refreshBtn").addEventListener("click", () => loadData());
+  $("quickCoffee").addEventListener("click", async () => {
+    const now = new Date();
+    const rec = { type: "กาแฟ", detail: "", qty: 1, when: now, photoFile: null };
+    const shown = { eaten_at: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`, type: "กาแฟ", detail: "", qty: "1", photo: "", _pending: true };
+    pendingMeals.push(shown); render();
+    toast(`☕ จดกาแฟ ${pad(now.getHours())}:${pad(now.getMinutes())} แล้ว`);
+    try { await saveMeal(rec); shown._pending = false; render(); }
+    catch (e) { pendingMeals = pendingMeals.filter(p => p !== shown); render(); toast("ส่งไม่สำเร็จ — ลองใหม่", 4000); }
+  });
+  $("openLog").addEventListener("click", () => openModal("มื้ออาหาร"));
+  $("scrim").addEventListener("click", closeModal);
+  $("mCancel").addEventListener("click", closeModal);
+  document.querySelectorAll("#typeRow button").forEach(b =>
+    b.addEventListener("click", () => document.querySelectorAll("#typeRow button").forEach(x => x.classList.toggle("sel", x === b))));
+  $("qMinus").addEventListener("click", () => { const q = Math.max(1, +$("qVal").textContent - 1); $("qVal").textContent = q; });
+  $("qPlus").addEventListener("click", () => { const q = Math.min(9, +$("qVal").textContent + 1); $("qVal").textContent = q; });
+  $("mPhoto").addEventListener("change", () => {
+    const f = $("mPhoto").files[0];
+    if (f) { $("mPreview").src = URL.createObjectURL(f); $("mPreview").hidden = false; $("mPhotoClear").hidden = false; }
+  });
+  $("mPhotoClear").addEventListener("click", () => { $("mPhoto").value = ""; $("mPreview").hidden = true; $("mPhotoClear").hidden = true; });
+  $("mSave").addEventListener("click", async () => {
+    const type = document.querySelector("#typeRow button.sel")?.dataset.t || "มื้ออาหาร";
+    const detail = $("mDetail").value.trim();
+    const qty = +$("qVal").textContent;
+    const when = new Date(`${$("mDate").value}T${$("mTime").value || "00:00"}`);
+    const photoFile = $("mPhoto").files[0] || null;
+    if (isNaN(when)) { toast("เวลาไม่ถูกต้อง"); return; }
+    closeModal();
+    const shown = { eaten_at: `${$("mDate").value} ${$("mTime").value}`, type, detail, qty: String(qty), photo: "", _pending: true };
+    pendingMeals.push(shown); render();
+    toast(`บันทึก${photoFile ? "+รูป" : ""}แล้ว กำลังส่ง…`);
+    try { await saveMeal({ type, detail, qty, when, photoFile }); shown._pending = false; render(); toast("ส่งเข้าระบบแล้ว ✓"); }
+    catch (e) { pendingMeals = pendingMeals.filter(p => p !== shown); render(); toast("ส่งไม่สำเร็จ — เช็คเน็ตแล้วลองใหม่", 4000); }
+  });
+  $("analyzeBtn").addEventListener("click", async () => {
+    try { await dispatch("analyze.yml"); toast("สั่งวิเคราะห์แล้ว ~2 นาที"); pollThenReload("analyze.yml", "วิเคราะห์"); }
+    catch { toast("สั่งไม่สำเร็จ — เช็ค token/เน็ต", 4000); }
+  });
+  $("syncBtn").addEventListener("click", async () => {
+    try { await dispatch("sync.yml"); toast("สั่งดึง Garmin แล้ว ~1-2 นาที"); pollThenReload("sync.yml", "ดึงข้อมูล"); }
+    catch { toast("สั่งไม่สำเร็จ — เช็ค token/เน็ต", 4000); }
+  });
+}
+
+/* ---------- boot ---------- */
+function boot() {
+  if (!cfg || !cfg.repo || !cfg.token) {
+    $("setup").classList.add("open");
+    $("freshTxt").textContent = "ยังไม่ตั้งค่า";
+    $("cfgSave").addEventListener("click", () => {
+      const repo = $("cfgRepo").value.trim(), token = $("cfgToken").value.trim();
+      if (!repo.includes("/") || token.length < 20) { toast("กรอก repo และ token ให้ครบ"); return; }
+      cfg = { repo, token };
+      localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+      location.reload();
+    });
+    return;
+  }
+  $("main").style.display = "";
+  $("dock").style.display = "";
+  wire();
+  if (DATA) render();
+  loadData(!!DATA);
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+boot();
+window.__kk = { saveMeal, loadData, get cfg() { return cfg; } }; // ช่องทดสอบ
+})();
+</script>
+</body>
+</html>

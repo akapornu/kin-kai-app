@@ -711,7 +711,8 @@ function boot() {
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 boot();
-window.__kk = { saveMeal, loadData, get cfg() { return cfg; } }; // ช่องทดสอบ
+window.__kk = { saveMeal, loadData, get cfg() { return cfg; },
+  set data(d) { DATA = d; $("main").style.display = ""; $("dock").style.display = ""; try { wire(); } catch {} render(); } }; // ช่องทดสอบ
 })();
 </script>
 </body>

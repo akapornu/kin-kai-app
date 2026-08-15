@@ -361,12 +361,22 @@ async function loadData(silent) {
 
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 
+const hasBody = r => String(r.resting_hr ?? "").trim() !== "" || String(r.steps ?? "").trim() !== "";
 function render() {
   if (!DATA) return;
   const d = new Date();
   $("todayHead").textContent = `วันนี้ · ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear() + 543}`;
   const today = todayStr();
-  const day = DATA.daily.find(r => r.date === today) || DATA.daily[DATA.daily.length - 1] || {};
+  // เตือนเมื่อนาฬิกาไม่ได้อัปโหลดข้อมูลนานเกิน 3 ชม.
+  if (DATA.watch_last) {
+    const wl = new Date(DATA.watch_last.replace("T", " ").replace(" ", "T"));
+    const hrs = (Date.now() - wl) / 3600000;
+    if (hrs > 3) setBanner(`<b>⌚ นาฬิกายังไม่ส่งข้อมูลเข้า Garmin มา ${hrs < 48 ? Math.round(hrs) + " ชม." : Math.round(hrs / 24) + " วัน"}</b>ข้อมูลล่าสุดคือ ${esc(DATA.watch_last).replace("T", " ")} — เปิดแอป Garmin Connect บนมือถือให้มัน sync นาฬิกาก่อน แล้วค่อยกด "⌚ ดึง Garmin สด"`, false);
+    else setBanner("");
+  }
+  // เลือกวันล่าสุดที่มีข้อมูลจริง (แถวว่างของวันที่นาฬิกายังไม่ sync จะถูกข้าม)
+  const withData = DATA.daily.filter(hasBody);
+  const day = (DATA.daily.find(r => r.date === today && hasBody(r))) || withData[withData.length - 1] || {};
   const isToday = day.date === today;
   const hToday = DATA.hourly.filter(r => r.date === today);
   const meals = [...DATA.meals, ...pendingMeals]

@@ -341,23 +341,40 @@ let DATA = null;
 try { DATA = JSON.parse(localStorage.getItem("kk_data") || "null"); } catch {}
 let pendingMeals = []; // optimistic: เพิ่งจด ยังไม่เข้า data.json
 
+let loadError = null; // error ล่าสุดของการโหลด — สำคัญกว่า banner อื่นเสมอ
 async function loadData(silent) {
   if (!silent) $("freshTxt").textContent = "กำลังโหลด…";
   try {
     const r = await api(`/contents/data.json?_=${Date.now()}`, { raw: true, cache: "no-store" });
-    if (r.status === 401) { setBanner("<b>Token ใช้ไม่ได้หรือหมดอายุ</b>กดตั้งค่าใหม่ด้านล่าง แล้ววาง token ใหม่", true); return; }
-    if (r.status === 404) { setBanner("<b>ยังไม่มี data.json ใน repo</b>กด \"⌚ ดึง Garmin สด\" หนึ่งครั้งเพื่อสร้าง", false); return; }
-    if (!r.ok) { setBanner(`<b>โหลดข้อมูลไม่สำเร็จ (${r.status})</b>ลองรีเฟรชอีกครั้ง`, true); return; }
-    DATA = await r.json();
-    localStorage.setItem("kk_data", JSON.stringify(DATA));
-    // ตัด pending ที่เข้า data.json แล้ว
-    pendingMeals = pendingMeals.filter(p => !DATA.meals.some(m => m.eaten_at === p.eaten_at && m.detail === p.detail));
-    setBanner("");
+    if (r.status === 401) { loadError = "<b>Token ใช้ไม่ได้หรือหมดอายุ (401)</b>ล้างการตั้งค่าแล้ววาง token ใหม่: กดค้างที่คำว่า กิน×กาย ด้านบน"; }
+    else if (r.status === 403) { loadError = "<b>Token ไม่มีสิทธิ์อ่าน repo (403)</b>สร้าง token ใหม่ให้มีสิทธิ์ Contents: Read and write ของ repo garmin-cloud-sync"; }
+    else if (r.status === 404) { loadError = "<b>หา data.json ไม่เจอ (404)</b>เช็คชื่อ repo ในตั้งค่า หรือกด \"⌚ ดึง Garmin สด\" หนึ่งครั้ง"; }
+    else if (!r.ok) { loadError = `<b>โหลดข้อมูลไม่สำเร็จ (HTTP ${r.status})</b>ลองรีเฟรชอีกครั้ง`; }
+    else {
+      DATA = await r.json();
+      localStorage.setItem("kk_data", JSON.stringify(DATA));
+      pendingMeals = pendingMeals.filter(p => !DATA.meals.some(m => m.eaten_at === p.eaten_at && m.detail === p.detail));
+      loadError = null;
+    }
   } catch (e) {
-    if (!DATA) { setBanner("<b>ออฟไลน์</b>ต่อเน็ตแล้วรีเฟรชอีกครั้ง", true); return; }
+    loadError = `<b>ต่อ GitHub ไม่ได้ (${esc(e.name || "network")})</b>เช็คอินเทอร์เน็ตแล้วกดรีเฟรช`;
+  }
+  if (loadError) {
+    setBanner(loadError + (DATA ? ` — กำลังแสดงข้อมูลเก่ารอบ ${esc(DATA.generated_at || "?")}` : ""), true);
+    $("freshTxt").textContent = DATA ? `⚠️ ของเก่า ${DATA.generated_at}` : "โหลดไม่สำเร็จ";
+    if (!DATA) return;
   }
   render();
 }
+// กดค้างที่ชื่อแอพ 1.2 วิ = ล้างการตั้งค่า (ทางหนีเวลา token เสีย)
+(() => {
+  let t;
+  const h1 = document.querySelector("header.app h1");
+  const arm = () => { t = setTimeout(() => { if (confirm("ล้างการตั้งค่า (repo/token) แล้วตั้งใหม่?")) { localStorage.removeItem("kk_cfg"); localStorage.removeItem("kk_data"); location.reload(); } }, 1200); };
+  const disarm = () => clearTimeout(t);
+  ["touchstart", "mousedown"].forEach(ev => h1.addEventListener(ev, arm));
+  ["touchend", "touchcancel", "mouseup", "mouseleave"].forEach(ev => h1.addEventListener(ev, disarm));
+})();
 
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 
@@ -368,7 +385,7 @@ function render() {
   $("todayHead").textContent = `วันนี้ · ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear() + 543}`;
   const today = todayStr();
   // เตือนเมื่อนาฬิกาไม่ได้อัปโหลดข้อมูลนานเกิน 3 ชม.
-  if (DATA.watch_last) {
+  if (!loadError && DATA.watch_last) {
     const wl = new Date(DATA.watch_last.replace("T", " ").replace(" ", "T"));
     const hrs = (Date.now() - wl) / 3600000;
     if (hrs > 3) setBanner(`<b>⌚ นาฬิกายังไม่ส่งข้อมูลเข้า Garmin มา ${hrs < 48 ? Math.round(hrs) + " ชม." : Math.round(hrs / 24) + " วัน"}</b>ข้อมูลล่าสุดคือ ${esc(DATA.watch_last).replace("T", " ")} — เปิดแอป Garmin Connect บนมือถือให้มัน sync นาฬิกาก่อน แล้วค่อยกด "⌚ ดึง Garmin สด"`, false);
@@ -701,6 +718,10 @@ function wire() {
 
 /* ---------- boot ---------- */
 function boot() {
+  const v = document.createElement("div");
+  v.style.cssText = "text-align:center;color:var(--muted);font-size:.7rem;padding:14px 0 4px";
+  v.textContent = "กิน×กาย v1.3 · 16 ส.ค. 2569";
+  document.querySelector(".wrap").appendChild(v);
   if (!cfg || !cfg.repo || !cfg.token) {
     $("setup").classList.add("open");
     $("freshTxt").textContent = "ยังไม่ตั้งค่า";

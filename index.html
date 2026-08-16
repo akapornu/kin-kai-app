@@ -214,22 +214,40 @@
 <div id="toast"></div>
 
 <nav class="dock" id="dock" style="display:none"><div class="dock-inner">
-  <button class="coffee" id="quickCoffee" type="button">☕ จดกาแฟ</button>
-  <button class="meal" id="openLog" type="button">🍽️ จดมื้อ/อื่น ๆ</button>
+  <button class="coffee" id="openLog" type="button">📝 จดการกิน</button>
 </div></nav>
 
 <div id="modal">
   <div class="scrim" id="scrim"></div>
   <div class="sheet">
-    <h3>จดการกิน</h3>
+    <h3 id="mTitle">จดการกิน</h3>
     <div class="typerow" id="typeRow">
-      <button data-t="มื้ออาหาร" class="sel" type="button">🍽️ มื้ออาหาร</button>
+      <button data-t="มื้ออาหาร" type="button">🍽️ มื้ออาหาร</button>
       <button data-t="กาแฟ" type="button">☕ กาแฟ</button>
       <button data-t="ของว่าง" type="button">🍪 ของว่าง</button>
       <button data-t="เครื่องดื่มอื่น" type="button">🥤 เครื่องดื่ม</button>
     </div>
-    <div class="field"><label>รายละเอียด (เมนู)</label><input id="mDetail" type="text" placeholder="เช่น กะเพราปลาหมึก ไข่ดาว"></div>
-    <div class="field"><label>จำนวน (แก้ว/ช็อต/ที่)</label>
+    <div id="coffeeExtra" hidden>
+      <div class="field"><label>เมนูกาแฟ</label>
+        <div class="typerow" id="coffeeMenuRow">
+          <button data-c="เอสเพรสโซ่" type="button">เอสเพรสโซ่</button>
+          <button data-c="อเมริกาโน่" type="button">อเมริกาโน่</button>
+          <button data-c="ลาเต้" type="button">ลาเต้</button>
+          <button data-c="คาปูชิโน่" type="button">คาปูชิโน่</button>
+          <button data-c="มอคค่า" type="button">มอคค่า</button>
+          <button data-c="กาแฟเย็นโบราณ" type="button">เย็นโบราณ</button>
+        </div></div>
+      <div class="field"><label>จำนวนช็อต</label>
+        <div class="qtyrow"><button id="shotMinus" type="button">−</button><span class="q" id="shotVal">1</span><button id="shotPlus" type="button">+</button></div></div>
+      <div class="field"><label>ความหวาน</label>
+        <div class="typerow" id="sweetRow">
+          <button data-s="ไม่หวาน" type="button">ไม่หวาน</button>
+          <button data-s="หวานน้อย" type="button" class="sel">หวานน้อย</button>
+          <button data-s="หวานปกติ" type="button">หวานปกติ</button>
+        </div></div>
+    </div>
+    <div class="field"><label>รายละเอียด (แก้เองได้)</label><input id="mDetail" type="text" placeholder="เช่น กะเพราปลาหมึก ไข่ดาว"></div>
+    <div class="field"><label>จำนวนแก้ว/ที่ (สั่งซ้ำเมนูเดิม)</label>
       <div class="qtyrow"><button id="qMinus" type="button">−</button><span class="q" id="qVal">1</span><button id="qPlus" type="button">+</button></div>
     </div>
     <div class="field"><label>เวลาที่กิน (แก้ได้ถ้าจดย้อนหลัง)</label>
@@ -244,6 +262,7 @@
       </div>
     </div>
     <div class="sheetact">
+      <button class="cancel" id="mDelete" type="button" hidden style="flex:0 0 auto;color:var(--status-critical);border-color:var(--status-critical)">🗑 ลบ</button>
       <button class="cancel" id="mCancel" type="button">ยกเลิก</button>
       <button class="save" id="mSave" type="button">บันทึก</button>
     </div>
@@ -260,13 +279,6 @@ const numf = x => (x == null || x === "" || isNaN(+x)) ? null : +x;
 
 /* ---------- ฐานข้อมูลโภชนาการ (ประมาณการ) ---------- */
 const FOOD_DB = [
-  { k:["อเมริกาโน","americano","กาแฟดำ","ดำเย็น"], kcal:15, p:0, c:2, f:0, caf:95 },
-  { k:["เอสเพรสโซ","espresso","ช็อต"], kcal:5, p:0, c:1, f:0, caf:65 },
-  { k:["ลาเต้","latte"], kcal:150, p:7, c:13, f:8, caf:75 },
-  { k:["คาปู","cappuccino"], kcal:110, p:6, c:9, f:6, caf:75 },
-  { k:["มอคค่า","mocha"], kcal:230, p:7, c:30, f:9, caf:90 },
-  { k:["กาแฟเย็น","โอเลี้ยง","เย็นโบราณ","กาแฟโบราณ","กาแฟนม"], kcal:220, p:4, c:32, f:8, caf:90 },
-  { k:["กาแฟ","coffee"], kcal:120, p:3, c:14, f:5, caf:90 },
   { k:["ชาเย็น","ชานม"], kcal:210, p:4, c:32, f:7, caf:35 },
   { k:["ชาเขียว","มัทฉะ","matcha"], kcal:160, p:3, c:28, f:4, caf:35 },
   { k:["ชา","tea"], kcal:80, p:1, c:18, f:0, caf:30 },
@@ -305,6 +317,44 @@ const FOOD_DB = [
   { k:["ขนมปัง","แซนวิช","โทสต์"], kcal:280, p:9, c:40, f:9, caf:0 },
   { k:["เค้ก","ครัวซอง","โดนัท","คุกกี้","ขนมหวาน","บัวลอย","ลอดช่อง"], kcal:320, p:4, c:45, f:14, caf:0 },
 ];
+/* กาแฟคิดละเอียด: เมนู × ช็อต × ความหวาน (เอสเพรสโซ่ ~5 kcal/ช็อต, คาเฟอีน ~65 mg/ช็อต) */
+const COFFEE_MENUS = [
+  { k: ["เอสเพรสโซ", "espresso"], milk: 0, sugar: 0 },
+  { k: ["อเมริกาโน", "americano", "กาแฟดำ", "ดำเย็น", "ดำร้อน"], milk: 0, sugar: 25 },
+  { k: ["ลาเต้", "latte"], milk: 120, sugar: 30 },
+  { k: ["คาปู", "cappuccino"], milk: 90, sugar: 30 },
+  { k: ["มอคค่า", "mocha"], milk: 110, sugar: 70 },
+  { k: ["โบราณ", "โอเลี้ยง", "กาแฟนม", "กาแฟเย็น"], milk: 70, sugar: 150, caf: 90 },
+];
+const isCoffee = (type, det) =>
+  /กาแฟ/.test(type || "") || /(กาแฟ|เอสเพรสโซ|อเมริกาโน|ลาเต้|คาปู|มอคค่า|โอเลี้ยง|espresso|americano|latte)/i.test(det || "");
+function coffeeCalc(text) {
+  const t = (text || "").toLowerCase();
+  const menu = COFFEE_MENUS.find(m => m.k.some(k => t.includes(k.toLowerCase())));
+  const shots = +((t.match(/(\d+)\s*(ช็อต|shot)/) || [])[1] || 1);
+  const sf = /ไม่หวาน/.test(t) ? 0 : /หวานน้อย/.test(t) ? 0.5 : 1;
+  const milk = menu ? menu.milk : 0;
+  const sugar = (menu ? menu.sugar : 25) * sf;
+  return {
+    kcal: 5 * shots + milk + sugar,
+    p: milk ? 6 : 0,
+    c: sugar / 4 + (milk ? 9 : 0),
+    f: milk ? 6 : 0,
+    caf: (menu && menu.caf) ? menu.caf : 65 * shots,
+  };
+}
+function mealNutrition(m) {
+  const qty = qtyNum(m);
+  if (isCoffee(m.type, m.detail)) {
+    const n = coffeeCalc(m.detail);
+    return { known: true, kcal: n.kcal * qty, p: n.p * qty, c: n.c * qty, f: n.f * qty, caf: n.caf * qty };
+  }
+  const hits = matchFood(m.detail);
+  if (!hits.length) return { known: false, kcal: 0, p: 0, c: 0, f: 0, caf: 0 };
+  const s = { known: true, kcal: 0, p: 0, c: 0, f: 0, caf: 0 };
+  hits.forEach(h => { s.kcal += h.kcal * qty; s.p += h.p * qty; s.c += h.c * qty; s.f += h.f * qty; s.caf += h.caf * qty; });
+  return s;
+}
 function matchFood(text) {
   const hits = [];
   let rest = (text || "").toLowerCase();
@@ -455,24 +505,27 @@ function renderMeals(meals) {
   let tot = { kcal: 0, p: 0, c: 0, f: 0, caf: 0 }, cafNow = 0, unknown = [];
   list.innerHTML = meals.map((m, i) => {
     const qty = qtyNum(m);
-    let hits = matchFood(m.detail);
-    if (!hits.length && /กาแฟ/.test(m.type)) hits = matchFood("กาแฟ");
-    let kcal = 0, caf = 0;
-    hits.forEach(h => { kcal += h.kcal * qty; caf += h.caf * qty; tot.kcal += h.kcal * qty; tot.p += h.p * qty; tot.c += h.c * qty; tot.f += h.f * qty; tot.caf += h.caf * qty; });
-    if (!hits.length && m.detail) unknown.push(m.detail);
+    const n = mealNutrition(m);
+    tot.kcal += n.kcal; tot.p += n.p; tot.c += n.c; tot.f += n.f; tot.caf += n.caf;
+    if (!n.known && m.detail) unknown.push(m.detail);
     const t = new Date(String(m.eaten_at).replace(" ", "T"));
     const hrs = (Date.now() - t) / 3600000;
-    if (hrs >= 0) cafNow += caf * Math.pow(0.5, hrs / 5);
+    if (hrs >= 0) cafNow += n.caf * Math.pow(0.5, hrs / 5);
     const ico = /กาแฟ/.test(m.type) ? "☕" : m.type === "ของว่าง" ? "🍪" : /เครื่องดื่ม/.test(m.type) ? "🥤" : "🍽️";
     let photoTag = "";
     if (m.photo && m.photo.startsWith("inbox/")) photoTag = ` <a href="#" data-photo="${esc(m.photo)}" title="ดูรูป">📷</a>`;
     else if (m.photo && m.photo.includes("drive.google.com")) photoTag = ` <a href="${esc(m.photo.split(/[,\s]+/)[0])}" target="_blank" rel="noopener">📷</a>`;
     const pend = m._pending ? ' <span style="color:var(--muted)">(กำลังส่ง…)</span>' : "";
-    return `<li><span class="t">${esc(String(m.eaten_at).slice(11, 16))}</span><span class="what">${ico} ${esc(m.detail || m.type)}${qty !== 1 ? ` <b>×${qty}</b>` : ""}${photoTag}${pend}</span><span class="kcal">${hits.length ? "≈" + Math.round(kcal) + " kcal" : "?"}</span></li>`;
+    const editable = m.src === "app" && m.id && !m._pending;
+    return `<li${editable ? ` data-edit="${i}" style="cursor:pointer"` : ""}><span class="t">${esc(String(m.eaten_at).slice(11, 16))}</span><span class="what">${ico} ${esc(m.detail || m.type)}${qty !== 1 ? ` <b>×${qty}</b>` : ""}${photoTag}${pend}</span><span class="kcal">${n.known ? "≈" + Math.round(n.kcal) + " kcal" : "?"}${editable ? ' <span style="color:var(--muted)">✎</span>' : ""}</span></li>`;
   }).join("");
   list.querySelectorAll("a[data-photo]").forEach(a => a.addEventListener("click", async e => {
-    e.preventDefault();
+    e.preventDefault(); e.stopPropagation();
     try { window.open(await photoBlobUrl(a.dataset.photo), "_blank"); } catch { toast("โหลดรูปไม่ได้"); }
+  }));
+  list.querySelectorAll("li[data-edit]").forEach(li => li.addEventListener("click", e => {
+    if (e.target.closest("a")) return;
+    openModal(null, meals[+li.dataset.edit]);
   }));
   chips.innerHTML = `
     <span class="chip">รวม <b>≈${Math.round(tot.kcal)}</b> kcal</span>
@@ -481,7 +534,7 @@ function renderMeals(meals) {
     <span class="chip">ไขมัน <b>≈${Math.round(tot.f)}</b> ก.</span>
     <span class="chip">☕ รับ <b>≈${Math.round(tot.caf)}</b> mg</span>
     ${tot.caf ? `<span class="chip">คงเหลือ <b>≈${Math.round(cafNow)}</b> mg</span>` : ""}`;
-  note.textContent = "ประมาณจากชื่อเมนู (คาเฟอีนสลายครึ่งทุก ~5 ชม.) — ตัวเลขแม่นขึ้นเมื่อ Claude อ่านรูปในรอบวิเคราะห์"
+  note.textContent = "กาแฟคิดตามชนิด×ช็อต×หวาน (เอสเพรสโซ่ ~5 kcal · คาเฟอีน ~65 mg/ช็อต, สลายครึ่งทุก ~5 ชม.) อาหารประมาณจากชื่อเมนู — แม่นขึ้นเมื่อ Claude อ่านรูป"
     + (unknown.length ? ` · ยังไม่รู้จัก: ${unknown.join(", ")}` : "");
 }
 
@@ -607,16 +660,22 @@ async function resizeImage(file, maxDim = 1280) {
   return new Promise(res => canvas.toBlob(res, "image/jpeg", 0.82));
 }
 async function putFile(path, contentB64, message) {
-  const r = await api(`/contents/${path}`, {
-    method: "PUT",
-    body: JSON.stringify({ message, content: contentB64, branch: "main" }),
-  });
+  let sha;
+  const g = await api(`/contents/${path}`);
+  if (g.ok) sha = (await g.json()).sha; // มีไฟล์เดิม = แก้ทับ
+  const body = { message, content: contentB64, branch: "main" };
+  if (sha) body.sha = sha;
+  const r = await api(`/contents/${path}`, { method: "PUT", body: JSON.stringify(body) });
   if (!r.ok) throw new Error(`PUT ${path}: ${r.status} ${(await r.text()).slice(0, 120)}`);
 }
-async function saveMeal({ type, detail, qty, when, photoFile }) {
-  const id = when.toISOString().replace(/[:.]/g, "-").slice(0, 19) + "-" + Math.random().toString(36).slice(2, 6);
+async function saveMeal({ id, type, detail, qty, when, photoFile, keepPhoto, deleted }) {
+  id = id || (when.toISOString().replace(/[:.]/g, "-").slice(0, 19) + "-" + Math.random().toString(36).slice(2, 6));
+  if (deleted) {
+    await putFile(`inbox/${id}.json`, btoa(unescape(encodeURIComponent(JSON.stringify({ id, deleted: true })))), `delete ${id}`);
+    return { id, deleted: true };
+  }
   const eaten_at = `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())} ${pad(when.getHours())}:${pad(when.getMinutes())}`;
-  let photoPath = "";
+  let photoPath = keepPhoto || "";
   if (photoFile) {
     const small = await resizeImage(photoFile);
     photoPath = `inbox/photos/${id}.jpg`;
@@ -658,33 +717,75 @@ async function pollThenReload(wf, label) {
 }
 
 /* ---------- UI wiring ---------- */
-function openModal(presetType) {
-  $("modal").classList.add("open");
-  document.querySelectorAll("#typeRow button").forEach(b => b.classList.toggle("sel", b.dataset.t === presetType));
-  const now = new Date();
-  $("mDate").value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  $("mTime").value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  $("mDetail").value = ""; $("qVal").textContent = "1";
-  $("mPhoto").value = ""; $("mPreview").hidden = true; $("mPhotoClear").hidden = true;
+let editing = null;
+function syncCoffeeUI() {
+  const isCof = document.querySelector("#typeRow button.sel")?.dataset.t === "กาแฟ";
+  $("coffeeExtra").hidden = !isCof;
 }
-const closeModal = () => $("modal").classList.remove("open");
+function composeCoffeeDetail() {
+  const menu = document.querySelector("#coffeeMenuRow button.sel")?.dataset.c;
+  if (!menu) return;
+  const shots = $("shotVal").textContent;
+  const sweet = document.querySelector("#sweetRow button.sel")?.dataset.s || "หวานน้อย";
+  $("mDetail").value = `${menu} ${shots} ช็อต ${sweet}`;
+}
+function openModal(presetType, meal) {
+  editing = meal || null;
+  $("modal").classList.add("open");
+  $("mTitle").textContent = editing ? "แก้ไขรายการ" : "จดการกิน";
+  $("mDelete").hidden = !editing;
+  const typeSel = editing ? editing.type : presetType;
+  document.querySelectorAll("#typeRow button").forEach(b => b.classList.toggle("sel", b.dataset.t === typeSel));
+  document.querySelectorAll("#coffeeMenuRow button").forEach(b => b.classList.remove("sel"));
+  const when = editing ? new Date(String(editing.eaten_at).replace(" ", "T")) : new Date();
+  $("mDate").value = `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`;
+  $("mTime").value = `${pad(when.getHours())}:${pad(when.getMinutes())}`;
+  $("mDetail").value = editing ? (editing.detail || "") : "";
+  $("qVal").textContent = editing ? String(qtyNum(editing)) : "1";
+  $("shotVal").textContent = editing ? String(+((editing.detail || "").match(/(\d+)\s*ช็อต/) || [])[1] || 1) : "1";
+  $("mPhoto").value = ""; $("mPreview").hidden = true; $("mPhotoClear").hidden = true;
+  if (editing && editing.photo && editing.photo.startsWith("inbox/")) {
+    photoBlobUrl(editing.photo).then(u => { $("mPreview").src = u; $("mPreview").hidden = false; }).catch(() => {});
+  }
+  syncCoffeeUI();
+}
+const closeModal = () => { $("modal").classList.remove("open"); editing = null; };
 
 function wire() {
   $("refreshBtn").addEventListener("click", () => loadData());
-  $("quickCoffee").addEventListener("click", async () => {
-    const now = new Date();
-    const rec = { type: "กาแฟ", detail: "", qty: 1, when: now, photoFile: null };
-    const shown = { eaten_at: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`, type: "กาแฟ", detail: "", qty: "1", photo: "", _pending: true };
-    pendingMeals.push(shown); render();
-    toast(`☕ จดกาแฟ ${pad(now.getHours())}:${pad(now.getMinutes())} แล้ว`);
-    try { await saveMeal(rec); shown._pending = false; render(); }
-    catch (e) { pendingMeals = pendingMeals.filter(p => p !== shown); render(); toast("ส่งไม่สำเร็จ — ลองใหม่", 4000); }
-  });
-  $("openLog").addEventListener("click", () => openModal("มื้ออาหาร"));
+  $("openLog").addEventListener("click", () => openModal(null));
   $("scrim").addEventListener("click", closeModal);
   $("mCancel").addEventListener("click", closeModal);
   document.querySelectorAll("#typeRow button").forEach(b =>
-    b.addEventListener("click", () => document.querySelectorAll("#typeRow button").forEach(x => x.classList.toggle("sel", x === b))));
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#typeRow button").forEach(x => x.classList.toggle("sel", x === b));
+      syncCoffeeUI();
+      if (b.dataset.t === "กาแฟ") composeCoffeeDetail();
+    }));
+  document.querySelectorAll("#coffeeMenuRow button").forEach(b =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#coffeeMenuRow button").forEach(x => x.classList.toggle("sel", x === b));
+      composeCoffeeDetail();
+    }));
+  document.querySelectorAll("#sweetRow button").forEach(b =>
+    b.addEventListener("click", () => {
+      document.querySelectorAll("#sweetRow button").forEach(x => x.classList.toggle("sel", x === b));
+      composeCoffeeDetail();
+    }));
+  $("shotMinus").addEventListener("click", () => { $("shotVal").textContent = Math.max(1, +$("shotVal").textContent - 1); composeCoffeeDetail(); });
+  $("shotPlus").addEventListener("click", () => { $("shotVal").textContent = Math.min(6, +$("shotVal").textContent + 1); composeCoffeeDetail(); });
+  $("mDelete").addEventListener("click", async () => {
+    if (!editing || !confirm("ลบรายการนี้?")) return;
+    const id = editing.id;
+    closeModal();
+    toast("กำลังลบ…");
+    try {
+      await saveMeal({ id, deleted: true });
+      DATA.meals = DATA.meals.filter(m => m.id !== id);
+      localStorage.setItem("kk_data", JSON.stringify(DATA));
+      render(); toast("ลบแล้ว ✓");
+    } catch { toast("ลบไม่สำเร็จ — ลองใหม่", 4000); }
+  });
   $("qMinus").addEventListener("click", () => { const q = Math.max(1, +$("qVal").textContent - 1); $("qVal").textContent = q; });
   $("qPlus").addEventListener("click", () => { const q = Math.min(9, +$("qVal").textContent + 1); $("qVal").textContent = q; });
   $("mPhoto").addEventListener("change", () => {
@@ -693,13 +794,28 @@ function wire() {
   });
   $("mPhotoClear").addEventListener("click", () => { $("mPhoto").value = ""; $("mPreview").hidden = true; $("mPhotoClear").hidden = true; });
   $("mSave").addEventListener("click", async () => {
-    const type = document.querySelector("#typeRow button.sel")?.dataset.t || "มื้ออาหาร";
+    const typeBtn = document.querySelector("#typeRow button.sel");
+    if (!typeBtn) { toast("เลือกประเภทก่อนครับ"); return; }
+    const type = typeBtn.dataset.t;
     const detail = $("mDetail").value.trim();
     const qty = +$("qVal").textContent;
     const when = new Date(`${$("mDate").value}T${$("mTime").value || "00:00"}`);
     const photoFile = $("mPhoto").files[0] || null;
     if (isNaN(when)) { toast("เวลาไม่ถูกต้อง"); return; }
+    const wasEditing = editing;
     closeModal();
+    if (wasEditing) {
+      // แก้ไขของเดิม: อัปเดตจอทันที แล้วส่งทับ id เดิม
+      const tgt = DATA.meals.find(m => m.id === wasEditing.id);
+      if (tgt) Object.assign(tgt, { eaten_at: `${$("mDate").value} ${$("mTime").value}`, type, detail, qty: String(qty) });
+      render(); toast("กำลังบันทึกการแก้ไข…");
+      try {
+        await saveMeal({ id: wasEditing.id, type, detail, qty, when, photoFile, keepPhoto: wasEditing.photo });
+        localStorage.setItem("kk_data", JSON.stringify(DATA));
+        toast("แก้ไขแล้ว ✓");
+      } catch { toast("บันทึกการแก้ไขไม่สำเร็จ — ลองใหม่", 4000); loadData(true); }
+      return;
+    }
     const shown = { eaten_at: `${$("mDate").value} ${$("mTime").value}`, type, detail, qty: String(qty), photo: "", _pending: true };
     pendingMeals.push(shown); render();
     toast(`บันทึก${photoFile ? "+รูป" : ""}แล้ว กำลังส่ง…`);
@@ -720,7 +836,7 @@ function wire() {
 function boot() {
   const v = document.createElement("div");
   v.style.cssText = "text-align:center;color:var(--muted);font-size:.7rem;padding:14px 0 4px";
-  v.textContent = "กิน×กาย v1.3 · 16 ส.ค. 2569";
+  v.textContent = "กิน×กาย v1.4 · 16 ส.ค. 2569";
   document.querySelector(".wrap").appendChild(v);
   if (!cfg || !cfg.repo || !cfg.token) {
     $("setup").classList.add("open");

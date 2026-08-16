@@ -289,6 +289,12 @@ const FOOD_DB = [
   { k:["นม","milk"], kcal:130, p:7, c:10, f:7, caf:0 },
   { k:["เบียร์","beer"], kcal:150, p:1, c:12, f:0, caf:0 },
   { k:["น้ำเปล่า","น้ำแร่"], kcal:0, p:0, c:0, f:0, caf:0 },
+  { k:["ข้าวมันไก่ทอด"], kcal:700, p:28, c:80, f:28, caf:0 },
+  { k:["ข้าวมันไก่"], kcal:600, p:26, c:75, f:20, caf:0 },
+  { k:["ข้าวมัน"], kcal:400, p:6, c:66, f:10, caf:0 },
+  { k:["ข้าวหมูแดง","ข้าวหมูกรอบ"], kcal:600, p:25, c:70, f:22, caf:0 },
+  { k:["ข้าวขาหมู"], kcal:690, p:28, c:72, f:30, caf:0 },
+  { k:["ติ่มซำ","ขนมจีบ","ซาลาเปา"], kcal:80, p:4, c:9, f:3, caf:0 },
   { k:["กะเพรา"], kcal:600, p:25, c:65, f:25, caf:0 },
   { k:["ไข่ดาว"], kcal:90, p:6, c:0, f:7, caf:0 },
   { k:["ไข่เจียว"], kcal:250, p:12, c:2, f:21, caf:0 },
@@ -344,6 +350,12 @@ function coffeeCalc(text) {
   };
 }
 function mealNutrition(m) {
+  // ตัวเลขจาก Claude (รอบวิเคราะห์ อ่านรูป+ปริมาณจริง) สำคัญกว่าตารางประมาณเสมอ
+  if (m.ai_nut && numf(m.ai_nut.kcal) != null) {
+    return { known: true, ai: true, kcal: +m.ai_nut.kcal,
+      p: numf(m.ai_nut.protein_g) ?? 0, c: numf(m.ai_nut.carb_g) ?? 0,
+      f: numf(m.ai_nut.fat_g) ?? 0, caf: numf(m.ai_nut.caffeine_mg) ?? 0 };
+  }
   const qty = qtyNum(m);
   if (isCoffee(m.type, m.detail)) {
     const n = coffeeCalc(m.detail);
@@ -517,7 +529,8 @@ function renderMeals(meals) {
     else if (m.photo && m.photo.includes("drive.google.com")) photoTag = ` <a href="${esc(m.photo.split(/[,\s]+/)[0])}" target="_blank" rel="noopener">📷</a>`;
     const pend = m._pending ? ' <span style="color:var(--muted)">(กำลังส่ง…)</span>' : "";
     const editable = m.src === "app" && m.id && !m._pending;
-    return `<li${editable ? ` data-edit="${i}" style="cursor:pointer"` : ""}><span class="t">${esc(String(m.eaten_at).slice(11, 16))}</span><span class="what">${ico} ${esc(m.detail || m.type)}${qty !== 1 ? ` <b>×${qty}</b>` : ""}${photoTag}${pend}</span><span class="kcal">${n.known ? "≈" + Math.round(n.kcal) + " kcal" : "?"}${editable ? ' <span style="color:var(--muted)">✎</span>' : ""}</span></li>`;
+    const badge = n.ai ? ' <span style="color:var(--status-good);font-size:.7em;font-weight:700">AI</span>' : "";
+    return `<li${editable ? ` data-edit="${i}" style="cursor:pointer"` : ""}><span class="t">${esc(String(m.eaten_at).slice(11, 16))}</span><span class="what">${ico} ${esc(m.detail || m.type)}${qty !== 1 ? ` <b>×${qty}</b>` : ""}${photoTag}${pend}</span><span class="kcal">${n.known ? "≈" + Math.round(n.kcal) + " kcal" + badge : "?"}${editable ? ' <span style="color:var(--muted)">✎</span>' : ""}</span></li>`;
   }).join("");
   list.querySelectorAll("a[data-photo]").forEach(a => a.addEventListener("click", async e => {
     e.preventDefault(); e.stopPropagation();
@@ -534,8 +547,8 @@ function renderMeals(meals) {
     <span class="chip">ไขมัน <b>≈${Math.round(tot.f)}</b> ก.</span>
     <span class="chip">☕ รับ <b>≈${Math.round(tot.caf)}</b> mg</span>
     ${tot.caf ? `<span class="chip">คงเหลือ <b>≈${Math.round(cafNow)}</b> mg</span>` : ""}`;
-  note.textContent = "กาแฟคิดตามชนิด×ช็อต×หวาน (เอสเพรสโซ่ ~5 kcal · คาเฟอีน ~65 mg/ช็อต, สลายครึ่งทุก ~5 ชม.) อาหารประมาณจากชื่อเมนู — แม่นขึ้นเมื่อ Claude อ่านรูป"
-    + (unknown.length ? ` · ยังไม่รู้จัก: ${unknown.join(", ")}` : "");
+  note.textContent = "ป้าย AI = Claude ประเมินจากรูป/ปริมาณจริงในรอบวิเคราะห์ · ที่เหลือประมาณจากชื่อเมนูชั่วคราว (กาแฟคิดชนิด×ช็อต×หวาน) · คาเฟอีนสลายครึ่งทุก ~5 ชม."
+    + (unknown.length ? ` · ยังไม่รู้จัก: ${unknown.join(", ")} — กดวิเคราะห์ใหม่ให้ AI ตีตัวเลข` : "");
 }
 
 function renderChart(hToday, meals) {
@@ -836,7 +849,7 @@ function wire() {
 function boot() {
   const v = document.createElement("div");
   v.style.cssText = "text-align:center;color:var(--muted);font-size:.7rem;padding:14px 0 4px";
-  v.textContent = "กิน×กาย v1.4 · 16 ส.ค. 2569";
+  v.textContent = "กิน×กาย v1.5 · 16 ส.ค. 2569";
   document.querySelector(".wrap").appendChild(v);
   if (!cfg || !cfg.repo || !cfg.token) {
     $("setup").classList.add("open");

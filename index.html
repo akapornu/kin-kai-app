@@ -350,22 +350,13 @@ function coffeeCalc(text) {
   };
 }
 function mealNutrition(m) {
-  // ตัวเลขจาก Claude (รอบวิเคราะห์ อ่านรูป+ปริมาณจริง) สำคัญกว่าตารางประมาณเสมอ
+  // กติกาผู้ใช้ (16 ส.ค.): ตัวเลขทุกตัวต้องมาจาก Claude เท่านั้น — ห้ามเดาจากตาราง
   if (m.ai_nut && numf(m.ai_nut.kcal) != null) {
     return { known: true, ai: true, kcal: +m.ai_nut.kcal,
       p: numf(m.ai_nut.protein_g) ?? 0, c: numf(m.ai_nut.carb_g) ?? 0,
       f: numf(m.ai_nut.fat_g) ?? 0, caf: numf(m.ai_nut.caffeine_mg) ?? 0 };
   }
-  const qty = qtyNum(m);
-  if (isCoffee(m.type, m.detail)) {
-    const n = coffeeCalc(m.detail);
-    return { known: true, kcal: n.kcal * qty, p: n.p * qty, c: n.c * qty, f: n.f * qty, caf: n.caf * qty };
-  }
-  const hits = matchFood(m.detail);
-  if (!hits.length) return { known: false, kcal: 0, p: 0, c: 0, f: 0, caf: 0 };
-  const s = { known: true, kcal: 0, p: 0, c: 0, f: 0, caf: 0 };
-  hits.forEach(h => { s.kcal += h.kcal * qty; s.p += h.p * qty; s.c += h.c * qty; s.f += h.f * qty; s.caf += h.caf * qty; });
-  return s;
+  return { known: false, pending: true, kcal: 0, p: 0, c: 0, f: 0, caf: 0 };
 }
 function matchFood(text) {
   const hits = [];
@@ -514,12 +505,12 @@ function renderMeals(meals) {
     list.innerHTML = '<li class="empty">วันนี้ยังไม่มีบันทึก — กดปุ่มล่างเพื่อจด</li>';
     chips.innerHTML = ""; note.textContent = ""; return;
   }
-  let tot = { kcal: 0, p: 0, c: 0, f: 0, caf: 0 }, cafNow = 0, unknown = [];
+  let tot = { kcal: 0, p: 0, c: 0, f: 0, caf: 0 }, cafNow = 0, pendingN = 0;
   list.innerHTML = meals.map((m, i) => {
     const qty = qtyNum(m);
     const n = mealNutrition(m);
     tot.kcal += n.kcal; tot.p += n.p; tot.c += n.c; tot.f += n.f; tot.caf += n.caf;
-    if (!n.known && m.detail) unknown.push(m.detail);
+    if (n.pending) pendingN++;
     const t = new Date(String(m.eaten_at).replace(" ", "T"));
     const hrs = (Date.now() - t) / 3600000;
     if (hrs >= 0) cafNow += n.caf * Math.pow(0.5, hrs / 5);
@@ -529,8 +520,10 @@ function renderMeals(meals) {
     else if (m.photo && m.photo.includes("drive.google.com")) photoTag = ` <a href="${esc(m.photo.split(/[,\s]+/)[0])}" target="_blank" rel="noopener">📷</a>`;
     const pend = m._pending ? ' <span style="color:var(--muted)">(กำลังส่ง…)</span>' : "";
     const editable = m.src === "app" && m.id && !m._pending;
-    const badge = n.ai ? ' <span style="color:var(--status-good);font-size:.7em;font-weight:700">AI</span>' : "";
-    return `<li${editable ? ` data-edit="${i}" style="cursor:pointer"` : ""}><span class="t">${esc(String(m.eaten_at).slice(11, 16))}</span><span class="what">${ico} ${esc(m.detail || m.type)}${qty !== 1 ? ` <b>×${qty}</b>` : ""}${photoTag}${pend}</span><span class="kcal">${n.known ? "≈" + Math.round(n.kcal) + " kcal" + badge : "?"}${editable ? ' <span style="color:var(--muted)">✎</span>' : ""}</span></li>`;
+    const kcalTxt = n.known
+      ? `≈${Math.round(n.kcal)} kcal <span style="color:var(--status-good);font-size:.7em;font-weight:700">AI</span>`
+      : '<span style="color:var(--muted)">…รอ AI</span>';
+    return `<li${editable ? ` data-edit="${i}" style="cursor:pointer"` : ""}><span class="t">${esc(String(m.eaten_at).slice(11, 16))}</span><span class="what">${ico} ${esc(m.detail || m.type)}${qty !== 1 ? ` <b>×${qty}</b>` : ""}${photoTag}${pend}</span><span class="kcal">${kcalTxt}${editable ? ' <span style="color:var(--muted)">✎</span>' : ""}</span></li>`;
   }).join("");
   list.querySelectorAll("a[data-photo]").forEach(a => a.addEventListener("click", async e => {
     e.preventDefault(); e.stopPropagation();
@@ -547,8 +540,8 @@ function renderMeals(meals) {
     <span class="chip">ไขมัน <b>≈${Math.round(tot.f)}</b> ก.</span>
     <span class="chip">☕ รับ <b>≈${Math.round(tot.caf)}</b> mg</span>
     ${tot.caf ? `<span class="chip">คงเหลือ <b>≈${Math.round(cafNow)}</b> mg</span>` : ""}`;
-  note.textContent = "ป้าย AI = Claude ประเมินจากรูป/ปริมาณจริงในรอบวิเคราะห์ · ที่เหลือประมาณจากชื่อเมนูชั่วคราว (กาแฟคิดชนิด×ช็อต×หวาน) · คาเฟอีนสลายครึ่งทุก ~5 ชม."
-    + (unknown.length ? ` · ยังไม่รู้จัก: ${unknown.join(", ")} — กดวิเคราะห์ใหม่ให้ AI ตีตัวเลข` : "");
+  note.textContent = "ทุกตัวเลขคำนวณโดย Claude จากรูป/รายละเอียดจริง (ไม่มีการเดาจากตาราง) · คาเฟอีนคงเหลือ = ค่า AI × การสลายครึ่งทุก ~5 ชม."
+    + (pendingN ? ` · ${pendingN} รายการกำลังรอ Claude คิดเลข (~2-3 นาทีหลังจด)` : "");
 }
 
 function renderChart(hToday, meals) {
@@ -704,6 +697,11 @@ async function dispatch(wf) {
   const r = await api(`/actions/workflows/${wf}/dispatches`, { method: "POST", body: JSON.stringify({ ref: "main" }) });
   if (r.status !== 204) throw new Error(`dispatch ${wf}: ${r.status}`);
 }
+/* หลังจด/แก้/ลบ: ingest บน cloud จะสั่ง Claude คิดเลขเอง — แอพตามผลมาอัปเดตจอ */
+function scheduleAiRefresh() {
+  setTimeout(() => loadData(true), 75000);                       // รอบแรก: มื้อเข้า sheet
+  setTimeout(() => pollThenReload("analyze.yml", "Claude คิดเลข"), 110000); // รอบสอง: ตามผล AI
+}
 let polling = false;
 async function pollThenReload(wf, label) {
   if (polling) return;
@@ -796,7 +794,7 @@ function wire() {
       await saveMeal({ id, deleted: true });
       DATA.meals = DATA.meals.filter(m => m.id !== id);
       localStorage.setItem("kk_data", JSON.stringify(DATA));
-      render(); toast("ลบแล้ว ✓");
+      render(); toast("ลบแล้ว ✓"); scheduleAiRefresh();
     } catch { toast("ลบไม่สำเร็จ — ลองใหม่", 4000); }
   });
   $("qMinus").addEventListener("click", () => { const q = Math.max(1, +$("qVal").textContent - 1); $("qVal").textContent = q; });
@@ -825,14 +823,14 @@ function wire() {
       try {
         await saveMeal({ id: wasEditing.id, type, detail, qty, when, photoFile, keepPhoto: wasEditing.photo });
         localStorage.setItem("kk_data", JSON.stringify(DATA));
-        toast("แก้ไขแล้ว ✓");
+        toast("แก้ไขแล้ว ✓ · Claude กำลังคิดเลขใหม่"); scheduleAiRefresh();
       } catch { toast("บันทึกการแก้ไขไม่สำเร็จ — ลองใหม่", 4000); loadData(true); }
       return;
     }
     const shown = { eaten_at: `${$("mDate").value} ${$("mTime").value}`, type, detail, qty: String(qty), photo: "", _pending: true };
     pendingMeals.push(shown); render();
     toast(`บันทึก${photoFile ? "+รูป" : ""}แล้ว กำลังส่ง…`);
-    try { await saveMeal({ type, detail, qty, when, photoFile }); shown._pending = false; render(); toast("ส่งเข้าระบบแล้ว ✓"); }
+    try { await saveMeal({ type, detail, qty, when, photoFile }); shown._pending = false; render(); toast("ส่งแล้ว ✓ · Claude กำลังคิดเลข ~2 นาที"); scheduleAiRefresh(); }
     catch (e) { pendingMeals = pendingMeals.filter(p => p !== shown); render(); toast("ส่งไม่สำเร็จ — เช็คเน็ตแล้วลองใหม่", 4000); }
   });
   $("analyzeBtn").addEventListener("click", async () => {
@@ -849,7 +847,7 @@ function wire() {
 function boot() {
   const v = document.createElement("div");
   v.style.cssText = "text-align:center;color:var(--muted);font-size:.7rem;padding:14px 0 4px";
-  v.textContent = "กิน×กาย v1.5 · 16 ส.ค. 2569";
+  v.textContent = "กิน×กาย v1.6 · 16 ส.ค. 2569";
   document.querySelector(".wrap").appendChild(v);
   if (!cfg || !cfg.repo || !cfg.token) {
     $("setup").classList.add("open");
